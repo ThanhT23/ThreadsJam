@@ -1,0 +1,81 @@
+CCEffect %{
+  techniques:
+    - passes:
+      - vert: sprite-vs:vert
+        frag: sprite-fs:frag
+        depthStencilState:
+          depthTest: false
+          depthWrite: false
+        blendState:
+          targets:
+          - blend: true
+            blendSrc: src_alpha 
+            blendDst: one_minus_src_alpha
+            blendDstAlpha: one_minus_src_alpha   
+        properties: &props
+          mainTexture:    { value: white }
+          altlasUV:   { value: [0, 0, 0, 0] }
+          
+          # mainColor:      { value: [1, 1, 1, 1], linear: true, editor: { type: color } }
+          # colorScale:     { value: [1, 1, 1], target: colorScaleAndCutoff.xyz }
+          # alphaThreshold: { value: 0.5}
+          # uMin: { value: 0.0}
+          # uMax: { value: 1.0}
+        # migrations: &migs
+        #   properties:
+        #     mainColor:    { formerlySerializedAs: color }
+%}
+
+CCProgram sprite-vs %{
+  precision highp float;
+  #include <legacy/input>
+  #include <builtin/uniforms/cc-global>
+  // #include <legacy/decode-base>
+  #include <legacy/local-batch>
+
+  //显示声明layout(std140)
+  uniform PARAMS_VERT {
+    float placehold;
+  };
+
+  out vec2 v_uv;
+  out vec3 fragWorldPos;
+
+  vec4 vert () {
+    vec4 position;
+    CCVertInput(position);
+
+    fragWorldPos = a_position;
+    mat4 matWorld;
+    CCGetWorldMatrix(matWorld);
+    v_uv = a_texCoord;
+    return cc_matProj * (cc_matView * matWorld) * position;
+
+  }
+}% 
+
+CCProgram sprite-fs %{
+  precision highp float;
+
+  in vec2 v_uv;
+  in vec3 fragWorldPos;
+  uniform sampler2D mainTexture;
+
+  //显示声明layout(std140)
+  uniform PARAMS_FRAG {
+    vec4 altlasUV;
+    float palcehold;
+    // float uMin;
+    // float uMax;
+  };
+
+  vec4 frag () {
+    vec2 uvOrigin = altlasUV.xy;
+    vec2 uvSize = altlasUV.zw;
+    vec2 uvTmp = v_uv;
+    uvTmp.y = 1.0 - uvTmp.y;
+    vec2 mapUV = uvOrigin + uvTmp * uvSize;
+    vec4 texColor = texture(mainTexture, mapUV);
+    return texColor;
+  }
+}%
