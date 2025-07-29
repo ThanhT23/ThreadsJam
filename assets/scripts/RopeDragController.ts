@@ -38,7 +38,7 @@ export class RopeDragController extends Component {
     damping: number = 0.9; // rope softness
 
     @property
-    gravity: number = -600; // downward force
+    gravity: number = 0; // downward force
 
     @property({
         tooltip: "Số điểm rope tối đa. Giá trị nhỏ = rope ngắn hơn",
@@ -112,10 +112,15 @@ export class RopeDragController extends Component {
         ropeSegmentVelocities.push(v2(0, 0));
         ropeSegmentNodes.push(pointA);
 
+        // const wPosA = pointA.getWorldPosition();
+        // const wPosB = pointB.getWorldPosition();
+
         for (let k = 1; k < numberOfPoints - 1; k++) {
             let t = k / (numberOfPoints - 1);
             const x = posA.x * (1 - t) + posB.x * t;
             const y = posA.y * (1 - t) + posB.y * t;
+
+            console.log("Creating point:", k, "at", x, y, v2(x, y));
 
             ropeSegmentPoints.push(v2(x, y));
             ropeSegmentVelocities.push(v2(0, 0));
@@ -138,6 +143,7 @@ export class RopeDragController extends Component {
             pointB: pointB,
             nodes: ropeSegmentNodes,
         });
+        console.log("-----------------init", this.ropeSegments);
     }
     createPoint(position: Vec2, zIndex: number = 0, parentName: string) {
         // let node = new Node("Point");
@@ -220,7 +226,7 @@ export class RopeDragController extends Component {
         }
 
         // Apply spring forces to maintain rope constraints
-        this.applySpringForcesToSegment(segment, dt);
+        // this.applySpringForcesToSegment(segment, dt);
 
         // Apply asymmetric forces if enabled and this segment is being dragged
         // if (this.useAsymmetricForce && this.isDragging) {
@@ -279,30 +285,11 @@ export class RopeDragController extends Component {
         }
     }
 
-    // drawSpriteRope() {
-    //     if (!this.ropeSprite || this.ropeSegments.length === 0) return;
-
-    //     // Reset active sprite count
-    //     this.activeSpriteCount = 0;
-
-    //     // Create sprite segments for each rope segment
-    //     for (let segment of this.ropeSegments) {
-    //         for (let i = 0; i < segment.points.length - 1; i++) {
-    //             this.createSpriteBetweenPoints(segment.points[i], segment.points[i + 1]);
-    //         }
-    //     }
-
-    //     // Hide unused sprites
-    //     this.hideUnusedSprites();
-    // }
     setRopeSegments() {
-        for (let i = 0; i < this.ropeSegments.length; i++) {
-            let segment = this.ropeSegments[i];
-            for (let j = 0; j < segment.nodes.length; j++) {
-                let node = segment.nodes[j];
-                // Do something with the node
-                let pos = segment.points[j];
-                // let lPos = node.parent.getComponent(UITransform).convertToNodeSpaceAR(v3(wPos.x, wPos.y, 0));
+        for (let segment of this.ropeSegments) {
+            for (let i = 0; i < segment.nodes.length; i++) {
+                let node = segment.nodes[i];
+                let pos = segment.points[i];
                 node.setPosition(pos.x, pos.y, 0);
             }
         }

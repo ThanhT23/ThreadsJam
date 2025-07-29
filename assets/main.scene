@@ -934,7 +934,7 @@
     ],
     "segmentLength": 40,
     "damping": 0.9,
-    "gravity": -600,
+    "gravity": -100,
     "maxRopePoints": 4,
     "_id": "31qsFcFdlITKqnmYCihnsq"
   },
