@@ -16,6 +16,7 @@ import {
     v3,
 } from "cc";
 import { CurveTexture } from "../curvetexture/CurveTexture";
+import { MoveWithTouch } from "../curvetexture/MoveWithTouch";
 const { ccclass, property } = _decorator;
 
 @ccclass("PointList")
@@ -152,6 +153,9 @@ export class RopeDragController extends Component {
         node.setPosition(position.x, position.y, 0);
         node.setParent(this.node.getChildByName(parentName));
         node.setSiblingIndex(zIndex);
+
+        node.getComponent(MoveWithTouch).enabled = false;
+        node.getComponent(Sprite).enabled = false;
         // node.addComponent(UITransform);
         // node.addComponent(UIOpacity);
         // node.addComponent(Sprite);
@@ -174,39 +178,6 @@ export class RopeDragController extends Component {
     }
 
     update(dt: number) {
-        // Apply gravity to all points except head & footer
-        // for (let i = 1; i < this.points.length - 1; i++) {
-        //     this.velocities[i].y += this.gravity * dt;
-        //     const curr = this.points[i].worldPosition.clone();
-        //     curr.add(this.velocities[i].clone().multiplyScalar(dt));
-        //     this.points[i].setWorldPosition(curr);
-        // }
-        // // Rope constraint (2 passes for stability)
-        // for (let pass = 0; pass < 2; pass++) {
-        //     for (let i = 0; i < this.points.length - 1; i++) {
-        //         const p1 = this.points[i].worldPosition.clone();
-        //         const p2 = this.points[i + 1].worldPosition.clone();
-        //         const diff = new Vec3();
-        //         Vec3.subtract(diff, p2, p1);
-        //         const dist = diff.length();
-        //         if (dist === 0) continue;
-        //         const offset = (dist - this.segmentLength) / 2;
-        //         diff.normalize();
-        //         // Don't move head
-        //         if (i !== 0) {
-        //             this.points[i].setWorldPosition(p1.x + diff.x * offset, p1.y + diff.y * offset, p1.z);
-        //         }
-        //         // Don't move footer, it moves by tween automatically
-        //         if (i + 1 !== this.points.length - 1) {
-        //             this.points[i + 1].setWorldPosition(p2.x - diff.x * offset, p2.y - diff.y * offset, p2.z);
-        //         }
-        //     }
-        // }
-        // // Damping
-        // for (let i = 1; i < this.points.length - 1; i++) {
-        //     this.velocities[i].multiplyScalar(this.damping);
-        // }
-
         this.updateSimulatedPhysics(dt);
         this.setRopeSegments();
     }
@@ -226,7 +197,7 @@ export class RopeDragController extends Component {
         }
 
         // Apply spring forces to maintain rope constraints
-        // this.applySpringForcesToSegment(segment, dt);
+        this.applySpringForcesToSegment(segment, dt);
 
         // Apply asymmetric forces if enabled and this segment is being dragged
         // if (this.useAsymmetricForce && this.isDragging) {
@@ -236,7 +207,7 @@ export class RopeDragController extends Component {
         // Update positions based on velocities
         for (let i = 1; i < segment.points.length - 1; i++) {
             segment.velocities[i] = segment.velocities[i].multiplyScalar(this.damping);
-            segment.points[i] = segment.points[i].add(segment.velocities[i].multiplyScalar(dt));
+            segment.points[i] = segment.points[i].add(segment.velocities[i].clone().multiplyScalar(dt));
         }
 
         // Update endpoints based on pointA and pointB positions
@@ -251,17 +222,17 @@ export class RopeDragController extends Component {
             let difference = distance - this.segmentLength;
 
             if (Math.abs(difference) > 0.1) {
-                let direction = current.subtract(previous).normalize();
-                let force = direction.multiplyScalar(difference * this.springStrength);
+                let direction = current.clone().subtract(previous).normalize();
+                let force = direction.clone().multiplyScalar(difference * this.springStrength);
 
                 // Apply force to current point (if not endpoint)
                 if (i < segment.points.length - 1 && i > 0) {
-                    segment.velocities[i] = segment.velocities[i].subtract(force);
+                    segment.velocities[i] = segment.velocities[i].clone().subtract(force);
                 }
 
-                // Apply opposite force to previous point (if not endpoint)
+                // // Apply opposite force to previous point (if not endpoint)
                 if (i > 1) {
-                    segment.velocities[i - 1] = segment.velocities[i - 1].add(force);
+                    segment.velocities[i - 1] = segment.velocities[i - 1].clone().add(force);
                 }
             }
         }

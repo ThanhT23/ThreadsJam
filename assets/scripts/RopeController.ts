@@ -17,14 +17,10 @@ import {
     UITransform,
 } from "cc";
 import Bezier from "./bezier";
+import { PointList } from "./RopeDragController";
 
 const { ccclass, property } = _decorator;
 
-@ccclass("PointList")
-export class PointList {
-    @property(Node) posA: Node = null;
-    @property(Node) posB: Node = null;
-}
 export class RoleLine {
     public ropePointNodes: Node[] = [];
     constructor() {
