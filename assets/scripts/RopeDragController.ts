@@ -1,21 +1,4 @@
-import {
-    _decorator,
-    Component,
-    Node,
-    Vec3,
-    EventTouch,
-    Graphics,
-    Color,
-    tween,
-    Vec2,
-    v2,
-    UITransform,
-    UIOpacity,
-    Sprite,
-    instantiate,
-    v3,
-} from "cc";
-import { CurveTexture } from "../curvetexture/CurveTexture";
+import { _decorator, Component, Node, tween, Vec2, v2, Sprite, instantiate } from "cc";
 import { MoveWithTouch } from "../curvetexture/MoveWithTouch";
 const { ccclass, property } = _decorator;
 
@@ -27,9 +10,6 @@ export class PointList {
 
 @ccclass("RopeDragController")
 export class RopeDragController extends Component {
-    @property([Node])
-    points: Node[] = []; // head → footer
-
     @property(PointList) pointsList: PointList[] = [];
 
     @property
@@ -41,16 +21,24 @@ export class RopeDragController extends Component {
     @property
     gravity: number = 0; // downward force
 
-    @property({
-        tooltip: "Số điểm rope tối đa. Giá trị nhỏ = rope ngắn hơn",
-    })
-    maxRopePoints: number = 10;
+    @property()
+    maxRopePoints: number = 10; // maximum number of points in a rope segment
 
-    private velocities: Vec3[] = [];
-    private dragging = false;
-    private footerOriginalPos: Vec3 = new Vec3();
+    @property()
+    enableDualEndOscillation: boolean = false;
 
-    private springStrength: number = 1.3; // spring force: hard rope
+    @property()
+    endOscillationStrength: number = 0.7;
+
+    @property()
+    draggedEndForceRatio: number = 0.2;
+
+    @property()
+    fixedEndForceRatio: number = 0.8;
+
+    private springStrength: number = 1.8; // spring force: hard rope
+    private draggedPoint: Node = null;
+    private animationTime: number = 0;
 
     private ropeSegments: {
         points: Vec2[];
@@ -61,32 +49,18 @@ export class RopeDragController extends Component {
     }[] = [];
 
     onLoad() {
-        // Initialize velocity for each point
-        // for (let i = 0; i < this.points.length; i++) {
-        //     this.velocities.push(new Vec3());
-        // }
-
-        // // Save footer initial position
-        // this.footerOriginalPos = this.points[this.points.length - 1].position.clone();
-
         this.init();
+        let pointA = this.pointsList[0]?.posA;
 
-        // Enable head drag
-        // const head = this.points[0];
-        // head.on(Node.EventType.TOUCH_START, this.startDrag, this);
-        // head.on(Node.EventType.TOUCH_MOVE, this.dragHead, this);
-        // head.on(Node.EventType.TOUCH_END, this.endDrag, this);
-        // head.on(Node.EventType.TOUCH_CANCEL, this.endDrag, this);
-    }
+        let xB = pointA ? pointA.getPosition().x : 0;
 
-    start() {
-        // Tween footer left and right forever
-        // const footer = this.points[this.points.length - 1];
-        // const leftPos = this.footerOriginalPos.clone().add(new Vec3(-50, 0, 0));
-        // const rightPos = this.footerOriginalPos.clone().add(new Vec3(50, 0, 0));
-        // tween(footer)
-        //     .repeatForever(tween().to(1, { position: leftPos }).to(1, { position: rightPos }))
-        //     .start();
+        tween(pointA)
+            .repeatForever(
+                tween()
+                    .to(1, { x: xB - 70 })
+                    .to(1, { x: xB + 70 })
+            )
+            .start();
     }
 
     init() {
@@ -113,9 +87,6 @@ export class RopeDragController extends Component {
         ropeSegmentVelocities.push(v2(0, 0));
         ropeSegmentNodes.push(pointA);
 
-        // const wPosA = pointA.getWorldPosition();
-        // const wPosB = pointB.getWorldPosition();
-
         for (let k = 1; k < numberOfPoints - 1; k++) {
             let t = k / (numberOfPoints - 1);
             const x = posA.x * (1 - t) + posB.x * t;
@@ -136,7 +107,6 @@ export class RopeDragController extends Component {
         pointA.setSiblingIndex(0);
         pointB.setSiblingIndex(numberOfPoints);
 
-        // Add this rope segment to the collection
         this.ropeSegments.push({
             points: ropeSegmentPoints,
             velocities: ropeSegmentVelocities,
@@ -147,34 +117,16 @@ export class RopeDragController extends Component {
         console.log("-----------------init", this.ropeSegments);
     }
     createPoint(position: Vec2, zIndex: number = 0, parentName: string) {
-        // let node = new Node("Point");
         let point = this.pointsList[0].posA;
-        let node = instantiate(point); // Reuse the first point as a template
+        let node = instantiate(point);
         node.setPosition(position.x, position.y, 0);
         node.setParent(this.node.getChildByName(parentName));
         node.setSiblingIndex(zIndex);
 
         node.getComponent(MoveWithTouch).enabled = false;
         node.getComponent(Sprite).enabled = false;
-        // node.addComponent(UITransform);
-        // node.addComponent(UIOpacity);
-        // node.addComponent(Sprite);
 
         return node;
-    }
-
-    startDrag() {
-        this.dragging = true;
-    }
-
-    dragHead(event: EventTouch) {
-        const delta = event.getUIDelta();
-        const head = this.points[0];
-        head.setWorldPosition(head.worldPosition.x + delta.x, head.worldPosition.y + delta.y, head.worldPosition.z);
-    }
-
-    endDrag() {
-        this.dragging = false;
     }
 
     update(dt: number) {
@@ -201,7 +153,7 @@ export class RopeDragController extends Component {
 
         // Apply asymmetric forces if enabled and this segment is being dragged
         // if (this.useAsymmetricForce && this.isDragging) {
-        //     this.applyAsymmetricForces(segment, dt);
+        this.applyAsymmetricForces(segment, dt);
         // }
 
         // Update positions based on velocities
@@ -234,6 +186,59 @@ export class RopeDragController extends Component {
                 if (i > 1) {
                     segment.velocities[i - 1] = segment.velocities[i - 1].clone().add(force);
                 }
+            }
+        }
+    }
+    applyAsymmetricForces(segment: { points: Vec2[]; velocities: Vec2[]; pointA: Node; pointB: Node }, dt: number) {
+        if (!this.draggedPoint || segment.points.length < 3) return;
+
+        let isDraggingPointA = this.draggedPoint === segment.pointA;
+        let isDraggingPointB = this.draggedPoint === segment.pointB;
+
+        if (!isDraggingPointA && !isDraggingPointB) return;
+
+        for (let i = 1; i < segment.points.length - 1; i++) {
+            let normalizedPosition = i / (segment.points.length - 1); // 0 to 1
+            let forceMultiplier = 1.0;
+
+            if (this.enableDualEndOscillation) {
+                let distanceFromCenter = Math.abs(normalizedPosition - 0.5) * 2; // 0 to 1
+                forceMultiplier = 1.0 + this.endOscillationStrength * (1 - distanceFromCenter);
+
+                let oscillationForce = Math.sin(this.animationTime * 8) * this.endOscillationStrength * 20;
+                if (normalizedPosition < 0.3) {
+                    segment.velocities[i].y += (oscillationForce * (0.3 - normalizedPosition)) / 0.3;
+                } else if (normalizedPosition > 0.7) {
+                    segment.velocities[i].y += (oscillationForce * (normalizedPosition - 0.7)) / 0.3;
+                }
+            } else {
+                if (isDraggingPointA) {
+                    forceMultiplier =
+                        this.draggedEndForceRatio + (this.fixedEndForceRatio - this.draggedEndForceRatio) * normalizedPosition;
+                } else if (isDraggingPointB) {
+                    forceMultiplier = this.fixedEndForceRatio + (this.draggedEndForceRatio - this.fixedEndForceRatio) * normalizedPosition;
+                }
+            }
+
+            segment.velocities[i] = segment.velocities[i].multiplyScalar(forceMultiplier);
+
+            // Apply pull forces
+            if (!this.enableDualEndOscillation) {
+                if (isDraggingPointA) {
+                    let pullDirection = segment.points[segment.points.length - 1].subtract(segment.points[i]).normalize();
+                    let pullForce = pullDirection.multiplyScalar(this.springStrength * 0.3 * normalizedPosition);
+                    segment.velocities[i] = segment.velocities[i].add(pullForce.multiplyScalar(dt));
+                } else if (isDraggingPointB) {
+                    let pullDirection = segment.points[0].subtract(segment.points[i]).normalize();
+                    let pullForce = pullDirection.multiplyScalar(this.springStrength * 0.3 * (1 - normalizedPosition));
+                    segment.velocities[i] = segment.velocities[i].add(pullForce.multiplyScalar(dt));
+                }
+            } else {
+                let waveFromA = Math.sin(this.animationTime * 6 + normalizedPosition * Math.PI) * this.endOscillationStrength;
+                let waveFromB = Math.sin(this.animationTime * 6 + (1 - normalizedPosition) * Math.PI) * this.endOscillationStrength;
+
+                let combinedWave = (waveFromA + waveFromB) * 15;
+                segment.velocities[i].y += combinedWave * dt;
             }
         }
     }
