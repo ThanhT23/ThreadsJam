@@ -1,0 +1,61 @@
+CCEffect %{
+techniques:
+  - passes:
+      - vert: vs
+        frag: fs
+        properties:
+          mainTexture: { value: white }
+          normalMap: { value: white }
+          lightDir: { value: [0.0, 0.0, 1.0, 0.0] }
+          strength: { value: 1.0 }
+
+}%
+
+CCProgram vs %{
+precision highp float;
+#include <cc-global>
+#include <cc-local>
+
+in vec3 a_position;
+in vec2 a_texCoord;
+out vec2 v_uv;
+
+// Uniform block must be declared in vertex shader as well     
+// to ensure it's bound correctly.     
+uniform Constants {
+  vec4 lightDir;
+  float strength;
+};
+
+void main() {
+  v_uv = a_texCoord;
+  gl_Position = cc_matViewProj * vec4(a_position, 1.0);
+}
+}%
+
+CCProgram fs %{
+precision highp float;
+#include <cc-global>
+#include <cc-local>
+in vec2 v_uv;
+
+layout(location = 0)out vec4 fragColor;
+
+uniform sampler2D mainTexture;
+uniform sampler2D normalMap;
+
+// Giữ trong block để thỏa EFX2201          
+uniform Constants {
+  vec4 lightDir;
+  float strength;
+};
+
+void main() {
+  vec4 baseColor = texture(mainTexture, v_uv);
+  vec3 normal = texture(normalMap, v_uv).rgb;
+  normal = normalize(mix(vec3(0.0, 0.0, 1.0), normal * 2.0 - 1.0, strength));
+  
+  float light = max(dot(normal, normalize(lightDir.xyz)), 0.0);
+  fragColor = vec4(baseColor.rgb * light, baseColor.a);
+}
+}%

@@ -948,8 +948,12 @@
     ],
     "segmentLength": 40,
     "damping": 0.9,
-    "gravity": -100,
-    "maxRopePoints": 4,
+    "gravity": 0,
+    "maxRopePoints": 3,
+    "enableDualEndOscillation": false,
+    "endOscillationStrength": 0.7,
+    "draggedEndForceRatio": 0.2,
+    "fixedEndForceRatio": 0.7,
     "_id": "31qsFcFdlITKqnmYCihnsq"
   },
   {

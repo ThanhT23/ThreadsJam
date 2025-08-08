@@ -51,6 +51,7 @@ export class MoveWithTouch extends Component {
 
   onTouchStart(event: EventTouch) {
     this._isFocused = true;
+    // console.log(this.node.name + ' onTouchStart' );
   }
 
   onTouchMove(event: EventTouch) {

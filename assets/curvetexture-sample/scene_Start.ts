@@ -18,6 +18,12 @@ export class scene_Start extends Component {
   @property(CheckButton)
   checkButton5: CheckButton = null!;
 
+  @property(CheckButton)
+  checkButton6: CheckButton = null!;
+
+  @property(CheckButton)
+  checkButton7: CheckButton = null!;
+
   protected onEnable(): void {
     this.checkButton1.bindFunction((from: CheckButton) => {
       // 绑定函数逻辑
@@ -46,6 +52,16 @@ export class scene_Start extends Component {
       // 绑定函数逻辑
       console.log('CheckButton5 toggled:', from.onoff);
       director.loadScene('scene_CLOSEDAREA');
+    });
+    this.checkButton6.bindFunction((from: CheckButton) => {
+      // 绑定函数逻辑
+      console.log('CheckButton6 toggled:', from.onoff);
+      director.loadScene('scene_DRAGPIPE');
+    });
+    this.checkButton7.bindFunction((from: CheckButton) => {
+      // 绑定函数逻辑
+      console.log('CheckButton7 toggled:', from.onoff);
+      director.loadScene('scene_AnimationRope');
     });
   }
 

@@ -1,0 +1,67 @@
+CCEffect %{
+techniques:
+    - passes:
+          - vert: vs
+            frag: fs
+            blendState:
+                targets:
+                    - blend: true
+                      blendSrc: src_alpha
+                      blendDst: one_minus_src_alpha
+            rasterizerState:
+                cullMode: none
+            properties:
+                mainTexture: { value: white }
+                tileCount: { value: [32.0, 32.0] }
+                highlightTile: { value: [0.0, 0.0] }
+                highlightColor: { value: [1.0, 0.0, 0.0, 1.0] }
+                highlightStrength: { value: 1.0 }
+
+}%
+
+CCProgram vs %{
+precision highp float;
+#include <cc-global>
+#include <cc-local>
+
+in vec3 a_position;
+in vec2 a_texCoord;
+out vec2 v_uv;
+
+void main() {
+    vec4 pos = cc_matViewProj * cc_matWorld * vec4(a_position, 1.0);
+    v_uv = a_texCoord;
+    gl_Position = pos;
+}
+}%
+
+CCProgram fs %{
+precision highp float;
+
+in vec2 v_uv;
+layout(location = 0)out vec4 o_color;
+
+uniform sampler2D mainTexture;
+
+layout(std140, binding = 0)uniform HighlightUBO {
+    vec2 tileCount;
+    vec2 highlightTile;
+    vec4 highlightColor;
+    float highlightStrength;
+};
+
+void main() {
+    vec2 tileSize = 1.0 / tileCount;
+    vec2 tileCoord = floor(v_uv / tileSize);
+    vec4 texColor = texture(mainTexture, v_uv);
+    
+    if (tileCoord == highlightTile) {
+        float luminance = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
+        vec3 highlight = highlightColor.rgb * luminance;
+        highlight = mix(texColor.rgb * highlightColor.rgb, highlight, 0.5);
+        texColor.rgb = mix(texColor.rgb, highlight, highlightStrength);
+    }
+    
+    o_color = texColor;
+}
+}%
